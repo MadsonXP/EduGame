@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>EduGame - Laboratório</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e2e; color: #cdd6f4; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; }
+        .header-area { margin-bottom: 30px; border-bottom: 1px solid #45475a; padding-bottom: 15px; }
+        .grid-forms { display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; }
+        .card { background: #313244; padding: 25px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        h2 { color: #89b4fa; margin-top: 0; font-size: 1.2rem; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85em; margin-bottom: 5px; color: #a6adc8; }
+        input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #45475a; background: #181825; color: white; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-materia { background: #fab387; color: #11111b; }
+        .btn-sessao { background: #a6e3a1; color: #11111b; }
+        .btn:hover { opacity: 0.8; transform: translateY(-2px); }
+        .back-link { color: #89b4fa; text-decoration: none; font-weight: bold; }
+        #campoNotaRedacao { display: none; margin-top: 15px; border-top: 1px solid #45475a; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-area">
+            <a href="/dashboard" class="back-link">← Voltar para Dashboard</a>
+            <h1>Laboratório de Estudos</h1>
+        </div>
+
+        <div class="grid-forms">
+            <div class="card">
+                <h2>📖 1. Novo Grimório</h2>
+                <form th:action="@{/materias/cadastrar}" th:object="${novaMateria}" method="post">
+                    <div class="form-group">
+                        <label>Nome da Disciplina</label>
+                        <input type="text" th:field="*{nome}" placeholder="Ex: Redação, Física..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Cor da Aura</label>
+                        <input type="color" th:field="*{corHex}" value="#89b4fa" style="height: 45px; cursor: pointer;">
+                    </div>
+                    <button type="submit" class="btn btn-materia">Desbloquear Matéria</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>⚔️ 2. Registrar Batalha</h2>
+                <form th:action="@{/materias/registrar-sessao}" th:object="${novaSessao}" method="post">
+                    <div class="form-group">
+                        <label>Matéria Enfrentada</label>
+                        <select name="materiaId" required>
+                            <option value="">-- Selecione a Matéria --</option>
+                            <option th:each="m : ${materias}" th:value="${m.id}" th:text="${m.nome}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Assunto do Treino</label>
+                        <input type="text" th:field="*{assunto}" placeholder="Ex: Geometria, Redação Modelo Enem..." required>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Tempo (min)</label>
+                            <input type="number" th:field="*{tempoMinutos}" required min="1">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Questões</label>
+                            <input type="number" th:field="*{questoesFeitas}" value="0">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Acertos</label>
+                            <input type="number" th:field="*{questoesAcertos}" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="background: #181825; padding: 15px; border-radius: 8px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                            <input type="checkbox" th:field="*{teveRedacao}" id="checkRedacao" style="width: auto;" onchange="toggleRedacao()">
+                            Produziu uma Redação nesta sessão?
+                        </label>
+
+                        <div id="campoNotaRedacao">
+                            <label>Nota da Redação (0 - 1000)</label>
+                            <input type="number" th:field="*{notaRedacao}" placeholder="Insira a nota obtida" min="0" max="1000">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-sessao">Salvar Progresso</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleRedacao() {
+            const checkbox = document.getElementById('checkRedacao');
+            const divNota = document.getElementById('campoNotaRedacao');
+            // Mostra o campo de nota apenas se o checkbox estiver ativo
+            divNota.style.display = checkbox.checked ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
