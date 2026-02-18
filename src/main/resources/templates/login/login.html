@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGame - Login</title>
+    <style>
+        /* Estilos do Tema Dark Gamer */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #181825; /* Fundo Ultra Dark */
+            color: #cdd6f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-card {
+            background-color: #313244;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            border: 1px solid #45475a;
+        }
+
+        h1 {
+            color: #89b4fa;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        p {
+            color: #a6adc8;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        /* Campos de Entrada */
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 5px;
+            border-radius: 8px;
+            border: 1px solid #45475a;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #89b4fa;
+        }
+
+        /* Botão Principal */
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #a6e3a1; /* Verde Success */
+            color: #11111b;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #94e2d5;
+            transform: scale(1.02);
+        }
+
+        /* Mensagens de Feedback */
+        .alert {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+
+        .alert-error {
+            background-color: rgba(243, 139, 168, 0.1);
+            color: #f38ba8;
+            border: 1px solid #f38ba8;
+        }
+
+        .alert-success {
+            background-color: rgba(166, 227, 161, 0.1);
+            color: #a6e3a1;
+            border: 1px solid #a6e3a1;
+        }
+
+        /* Links */
+        .footer-links {
+            margin-top: 20px;
+        }
+
+        .footer-links a {
+            color: #89b4fa;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: #b4befe;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h1>EduGame</h1>
+        <p>Prepare seu inventário e entre na batalha!</p>
+
+        <div th:if="${param.error}" class="alert alert-error">
+            ⚔️ E-mail ou senha incorretos!
+        </div>
+
+        <div th:if="${param.sucesso}" class="alert alert-success">
+            ✨ Novo caçador registrado com sucesso!
+        </div>
+
+        <div th:if="${param.logout}" class="alert alert-success">
+            🛡️ Você saiu da guilda com segurança.
+        </div>
+
+        <form th:action="@{/login}" method="post">
+            <div class="input-group">
+                <input type="email" id="username" name="username" placeholder="E-mail do Caçador" required autofocus>
+            </div>
+            
+            <div class="input-group">
+                <input type="password" id="password" name="password" placeholder="Sua Senha Secreta" required>
+            </div>
+
+            <button type="submit">Entrar na Batalha</button>
+        </form>
+
+        <div class="footer-links">
+            <a href="/cadastro">Não tem um perfil? Criar novo Caçador</a>
+        </div>
+    </div>
+
+</body>
+</html>

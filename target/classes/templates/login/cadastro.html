@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>EduGame - Novo Caçador</title>
+    <style>
+        /* Reutilizando o estilo dark que você já tem */
+        body { font-family: sans-serif; background-color: #1e1e2e; color: #cdd6f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background-color: #313244; padding: 30px; border-radius: 12px; width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #45475a; background: #181825; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #fab387; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        a { color: #89b4fa; text-decoration: none; font-size: 0.8em; display: block; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Criar Novo Perfil</h2>
+        <form th:action="@{/cadastro}" th:object="${usuario}" method="post">
+            <input type="text" th:field="*{nome}" placeholder="Nome do Jogador" required>
+            <input type="email" th:field="*{email}" placeholder="E-mail" required>
+            <input type="password" th:field="*{senha}" placeholder="Senha" required>
+            <button type="submit">Iniciar Jornada</button>
+        </form>
+        <a href="/login">Já tenho conta, voltar ao login</a>
+    </div>
+</body>
+</html>
