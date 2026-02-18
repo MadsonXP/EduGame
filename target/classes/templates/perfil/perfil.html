@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>EduGame - Ficha do Caçador</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e2e; color: #cdd6f4; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 20px auto; background: #313244; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+        .container::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 8px; background: linear-gradient(90deg, #89b4fa, #cba6f7, #f38ba8); }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #89b4fa; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
+        
+        h1 { text-align: center; color: #cba6f7; margin-bottom: 30px; letter-spacing: 2px; text-transform: uppercase; font-size: 1.8rem; }
+        
+        .profile-header { display: flex; align-items: center; gap: 25px; margin-bottom: 30px; background: #181825; padding: 20px; border-radius: 15px; }
+        .avatar { width: 90px; height: 90px; background: #45475a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; border: 3px solid #cba6f7; }
+        .info h2 { margin: 0 0 5px 0; font-size: 1.8rem; color: #f9e2af; }
+        .info p { margin: 0; color: #a6adc8; font-size: 0.95rem; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .stat-box { background: #181825; padding: 25px; border-radius: 15px; text-align: center; border-bottom: 4px solid; }
+        .stat-box .title { font-size: 0.85rem; color: #a6adc8; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
+        .stat-box .value { font-size: 3.5rem; font-weight: bold; line-height: 1; }
+        .box-nivel { border-color: #89b4fa; } .box-nivel .value { color: #89b4fa; }
+        .box-rank { border-color: #f38ba8; } .box-rank .value { color: #f38ba8; }
+
+        .exp-container { background: #181825; padding: 25px; border-radius: 15px; margin-bottom: 30px; }
+        .exp-header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 15px; color: #a6e3a1; }
+        .exp-bar-bg { background: #313244; height: 18px; border-radius: 10px; overflow: hidden; }
+        .exp-bar-fill { background: linear-gradient(90deg, #a6e3a1, #94e2d5); height: 100%; transition: width 1s ease-in-out; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/dashboard" class="back-link">← Retornar à Dashboard</a>
+        
+        <h1>Ficha de Status do Caçador</h1>
+
+        <div class="profile-header">
+            <div class="avatar">🛡️</div>
+            <div class="info">
+                <h2 th:text="${usuario.nome}">Herói Desconhecido</h2>
+                <p th:text="${usuario.email}">heroi@guilda.com</p>
+                <div style="font-size: 0.8rem; color: #9399b2; margin-top: 5px;">Membro da Guilda desde: <span th:text="${#temporals.format(usuario.dataCadastro, 'dd/MM/yyyy')}">01/01/2026</span></div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box box-nivel">
+                <div class="title">Nível Global</div>
+                <div class="value" th:text="${usuario.nivel}">1</div>
+            </div>
+            <div class="stat-box box-rank">
+                <div class="title">Rank de Combate</div>
+                <div class="value" th:text="${usuario.rankGeral}">F</div>
+            </div>
+        </div>
+
+        <div class="exp-container">
+            <div class="exp-header">
+                <span>Experiência (EXP)</span>
+                <span><span th:text="${usuario.expAtual}">0</span> / <span th:text="${usuario.expParaProximoNivel}">1000</span></span>
+            </div>
+            <div class="exp-bar-bg">
+                <div class="exp-bar-fill" th:style="'width: ' + (${usuario.expAtual} * 100 / ${usuario.expParaProximoNivel}) + '%'"></div>
+            </div>
+        </div>
+
+        <div style="background: #181825; padding: 25px; border-radius: 15px;">
+            <h2 style="color: #89b4fa; font-size: 1.2rem; margin-top: 0; border-bottom: 1px solid #45475a; padding-bottom: 10px;">⚔️ Proficiência por Grimório (Disciplinas)</h2>
+            
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;">
+                <div th:each="m : ${materias}" style="background: #313244; padding: 15px; border-radius: 10px; width: 130px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); position: relative; overflow: hidden;">
+                    <div th:style="'background-color: ' + ${m.corHex} + '; height: 5px; position: absolute; top: 0; left: 0; right: 0;'"></div>
+                    
+                    <h3 th:text="${m.nome}" style="margin: 10px 0 5px 0; font-size: 0.95rem; color: #cdd6f4;">Matéria</h3>
+                    <div th:text="${m.rankAtual}" style="font-size: 2.5rem; font-weight: bold; color: #fab387; margin: 5px 0;">F</div>
+                    
+                    <div style="font-size: 0.75rem; color: #a6adc8;">
+                        <span th:text="${m.totalAcertos}">0</span> / <span th:text="${m.totalQuestoesRespondidas}">0</span> Acertos
+                    </div>
+                </div>
+                
+                <div th:if="${materias.empty}" style="color: #a6adc8; font-size: 0.9rem;">
+                    O seu Grimório está vazio. Desbloqueie matérias no Laboratório!
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

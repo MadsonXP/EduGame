@@ -41,6 +41,15 @@ public class MateriaController {
         return "materias/lista"; 
     }
 
+    @GetMapping("/historico")
+    public String exibirHistorico(Model model, @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
+        List<SessaoEstudo> sessoes = sessaoRepo.findByUsuarioId(usuario.getId());
+        
+        model.addAttribute("sessoes", sessoes);
+        return "materias/historico"; 
+    }
+
     @PostMapping("/cadastrar")
     public String cadastrarMateria(@ModelAttribute("novaMateria") Materia materia, @AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
@@ -63,21 +72,61 @@ public class MateriaController {
         sessao.setMateria(materia);
         sessao.setDataSessao(LocalDateTime.now());
 
-        // Lógica de Redação: se não foi marcado, a nota é limpa para evitar lixo no banco
         if (Boolean.FALSE.equals(sessao.getTeveRedacao())) {
             sessao.setNotaRedacao(null);
         }
 
+        // Prevenção de Null: Garante que os valores sejam no mínimo 0
+        int tempo = sessao.getTempoMinutos() != null ? sessao.getTempoMinutos() : 0;
+        int qFeitas = sessao.getQuestoesFeitas() != null ? sessao.getQuestoesFeitas() : 0;
+        int qAcertos = sessao.getQuestoesAcertos() != null ? sessao.getQuestoesAcertos() : 0;
+
+        // Atualiza status da matéria
         if (materia != null) {
             int qAnteriores = materia.getTotalQuestoesRespondidas() != null ? materia.getTotalQuestoesRespondidas() : 0;
             int aAnteriores = materia.getTotalAcertos() != null ? materia.getTotalAcertos() : 0;
             
-            materia.setTotalQuestoesRespondidas(qAnteriores + sessao.getQuestoesFeitas());
-            materia.setTotalAcertos(aAnteriores + sessao.getQuestoesAcertos());
+            materia.setTotalQuestoesRespondidas(qAnteriores + qFeitas);
+            materia.setTotalAcertos(aAnteriores + qAcertos);
             materiaRepo.save(materia);
         }
-
+        
         sessaoRepo.save(sessao);
+
+        // ==========================================
+        // ⚔️ SISTEMA DE RPG: DISTRIBUIÇÃO DE EXP E RANK
+        // ==========================================
+        if (usuario != null) {
+            int expGanha = 0;
+            expGanha += tempo * 2;    // 2 EXP por minuto de foco
+            expGanha += qFeitas * 5;  // 5 EXP por questão resolvida
+            expGanha += qAcertos * 10; // 10 de Bônus por acerto
+
+            if (Boolean.TRUE.equals(sessao.getTeveRedacao()) && sessao.getNotaRedacao() != null) {
+                expGanha += (int) (sessao.getNotaRedacao() / 2); // Ex: Nota 900 dá 450 EXP
+            }
+
+            usuario.ganharExp(expGanha);
+            
+            // Aqui calculamos o Rank Global do Caçador
+            List<Materia> todasMaterias = materiaRepo.findByUsuarioId(usuario.getId());
+            int totalQ = todasMaterias.stream().mapToInt(m -> m.getTotalQuestoesRespondidas() != null ? m.getTotalQuestoesRespondidas() : 0).sum();
+            int totalA = todasMaterias.stream().mapToInt(m -> m.getTotalAcertos() != null ? m.getTotalAcertos() : 0).sum();
+
+            if (totalQ > 0) {
+                double aprov = ((double) totalA / totalQ) * 100;
+                if (aprov >= 95) usuario.setRankGeral("SS");
+                else if (aprov >= 85) usuario.setRankGeral("S");
+                else if (aprov >= 75) usuario.setRankGeral("A");
+                else if (aprov >= 65) usuario.setRankGeral("B");
+                else if (aprov >= 50) usuario.setRankGeral("C");
+                else if (aprov >= 40) usuario.setRankGeral("D");
+                else if (aprov >= 25) usuario.setRankGeral("E");
+                else usuario.setRankGeral("F");
+            }
+            usuarioRepo.save(usuario);
+        }
+
         return "redirect:/dashboard";
     }
 }

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>EduGame - Histórico de Batalhas</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e2e; color: #cdd6f4; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        table { width: 100%; border-collapse: collapse; background: #313244; border-radius: 12px; overflow: hidden; margin-top: 20px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #45475a; }
+        th { background-color: #38394c; color: #89b4fa; text-transform: uppercase; font-size: 0.8em; }
+        .badge-materia { padding: 5px 10px; border-radius: 20px; color: #11111b; font-weight: bold; font-size: 0.8em; }
+        .redacao-badge { color: #fab387; font-weight: bold; }
+        .back-link { color: #89b4fa; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/dashboard" class="back-link">← Voltar para Dashboard</a>
+        <h1>📜 Histórico de Batalhas</h1>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Matéria</th>
+                    <th>Assunto</th>
+                    <th>Tempo</th>
+                    <th>Desempenho</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="s : ${sessoes}">
+                    <td th:text="${#temporals.format(s.dataSessao, 'dd/MM/yyyy HH:mm')}">01/01/2026</td>
+                    <td>
+                        <span class="badge-materia" 
+                              th:style="'background-color:' + ${s.materia.corHex}" 
+                              th:text="${s.materia.nome}">Física</span>
+                    </td>
+                    <td th:text="${s.assunto}">Leis de Newton</td>
+                    <td th:text="${s.tempoMinutos} + ' min'">60 min</td>
+                    <td>
+                        <div th:if="${s.teveRedacao}">
+                            <span class="redacao-badge">📝 Nota: <span th:text="${s.notaRedacao}">1000</span></span>
+                        </div>
+                        <div th:unless="${s.teveRedacao}">
+                            🎯 <span th:text="${s.questoesAcertos}">0</span> / <span th:text="${s.questoesFeitas}">0</span> acertos
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
