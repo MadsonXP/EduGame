@@ -8,17 +8,21 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e2e; color: #cdd6f4; margin: 0; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #45475a; padding-bottom: 15px; }
         
-        /* Grid de Cartões de Status */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .card { background: #313244; padding: 20px; border-radius: 12px; text-align: center; border-bottom: 4px solid #89b4fa; }
         .card h3 { font-size: 0.9rem; color: #a6adc8; margin: 0; }
         .card .value { font-size: 2rem; font-weight: bold; color: #f9e2af; }
 
-        /* Área de Gráficos */
-        .charts-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 30px; }
-        .chart-box { background: #313244; padding: 20px; border-radius: 15px; }
+        .charts-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 30px; }
+        .chart-box { background: #313244; padding: 20px; border-radius: 15px; position: relative; }
         
+        .filtro-select { background: #1e1e2e; color: #cdd6f4; border: 1px solid #45475a; padding: 8px; border-radius: 5px; outline: none; }
         button { background: #f38ba8; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; color: #11111b; font-weight: bold; }
+        
+        /* Ajuste para mobile */
+        @media (max-width: 768px) {
+            .charts-container { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -39,37 +43,131 @@
 
     <div class="charts-container">
         <div class="chart-box">
-            <h3 style="text-align: center;">Questões por Matéria</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Evolução de Questões</h3>
+                <select id="filtroTempo" class="filtro-select" onchange="atualizarGraficoQuestoes()">
+                    <option value="dia">Visão por Dia</option>
+                    <option value="mes">Visão por Mês</option>
+                </select>
+            </div>
             <canvas id="chartQuestoes"></canvas>
         </div>
-        <div class="chart-box" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
-            <h3>Deseja iniciar um novo treino?</h3>
-            <a href="/materias" style="background:#a6e3a1; color:#11111b; padding:15px 30px; border-radius:8px; text-decoration:none; font-weight:bold;">IR PARA MATÉRIAS</a>
+
+        <div class="chart-box" style="display: flex; flex-direction: column; align-items: center;">
+            <h3 style="margin-top: 0;">Foco por Matéria (Horas)</h3>
+            <canvas id="chartHoras"></canvas>
+            
+            <a href="/materias" style="background:#a6e3a1; color:#11111b; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:bold; margin-top: 25px; width: 80%; text-align: center;">
+                ⚔️ NOVO TREINO
+            </a>
         </div>
     </div>
 
     <script th:inline="javascript">
-        // Pegando os dados do Java para o JavaScript
-       const labels = /*[[${labelsMaterias}]]*/ [];
-const dados = /*[[${dadosQuestoes}]]*/ [];
+        // Recebendo os dados do Java
+        const sessoes = /*[[${dadosSessoes}]]*/ [];
+        const nomesMaterias = /*[[${nomesMaterias}]]*/ [];
+        const coresMaterias = /*[[${coresMaterias}]]*/ [];
+        const horasPorMateria = /*[[${horasPorMateria}]]*/ [];
 
-        const ctx = document.getElementById('chartQuestoes').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar', // Pode ser 'pie', 'line', 'bar'
+        // ----------------------------------------------------
+        // 1. GRÁFICO DE ROSQUINHA (HORAS ESTUDADAS)
+        // ----------------------------------------------------
+        const ctxHoras = document.getElementById('chartHoras').getContext('2d');
+        new Chart(ctxHoras, {
+            type: 'doughnut',
             data: {
-                labels: labels,
+                labels: nomesMaterias,
                 datasets: [{
-                    label: 'Questões Resolvidas',
-                    data: dados,
-                    backgroundColor: ['#89b4fa', '#f38ba8', '#a6e3a1', '#fab387', '#f9e2af'],
-                    borderWidth: 0
+                    data: horasPorMateria,
+                    backgroundColor: coresMaterias,
+                    borderColor: '#313244',
+                    borderWidth: 3,
+                    hoverOffset: 4
                 }]
             },
             options: {
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, grid: { color: '#45475a' } } }
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#cdd6f4', padding: 15 } }
+                }
             }
         });
+
+        // ----------------------------------------------------
+        // 2. GRÁFICO DE BARRAS EMPILHADAS (QUESTÕES NO TEMPO)
+        // ----------------------------------------------------
+        let chartQuestoesInstance = null;
+
+        function atualizarGraficoQuestoes() {
+            const filtro = document.getElementById('filtroTempo').value; // 'dia' ou 'mes'
+            
+            const labelsDatas = new Set();
+            const dadosAgrupados = {};
+
+            // Prepara a estrutura vazia para cada matéria
+            nomesMaterias.forEach(m => dadosAgrupados[m] = {});
+
+            // Agrupa os dados de cada batalha/sessão
+            sessoes.forEach(s => {
+                let dataFormatada = s.data; // formato YYYY-MM-DD
+                
+                // Se o filtro for por mês, corta a string para pegar só o YYYY-MM
+                if (filtro === 'mes') {
+                    dataFormatada = dataFormatada.substring(0, 7); 
+                }
+                
+                labelsDatas.add(dataFormatada);
+
+                if(!dadosAgrupados[s.materia][dataFormatada]) {
+                    dadosAgrupados[s.materia][dataFormatada] = 0;
+                }
+                // Soma as questões
+                dadosAgrupados[s.materia][dataFormatada] += s.questoes;
+            });
+
+            // Ordena as datas cronologicamente (ex: 2026-01-01 vem antes de 2026-01-02)
+            const labelsEixoX = Array.from(labelsDatas).sort();
+
+            // Monta os "datasets" usando as cores reais
+            const datasets = nomesMaterias.map((materia, index) => {
+                const dataArray = labelsEixoX.map(data => dadosAgrupados[materia][data] || 0);
+                return {
+                    label: materia,
+                    data: dataArray,
+                    backgroundColor: coresMaterias[index],
+                    borderRadius: 4
+                };
+            });
+
+            // Se o gráfico já existir, destrói antes de criar o novo (para não sobrepor)
+            if (chartQuestoesInstance) {
+                chartQuestoesInstance.destroy();
+            }
+
+            const ctxQuestoes = document.getElementById('chartQuestoes').getContext('2d');
+            chartQuestoesInstance = new Chart(ctxQuestoes, {
+                type: 'bar', // Tente mudar para 'line' se quiser ver em formato de linhas!
+                data: {
+                    labels: labelsEixoX,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        // O 'stacked: true' faz com que as barras fiquem umas em cima das outras, 
+                        // somando o total do dia.
+                        x: { stacked: true, ticks: { color: '#a6adc8' }, grid: { display: false } },
+                        y: { stacked: true, beginAtZero: true, ticks: { color: '#a6adc8' }, grid: { color: '#45475a' } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cdd6f4' } }
+                    }
+                }
+            });
+        }
+
+        // Desenha o gráfico de questões assim que a página carrega
+        atualizarGraficoQuestoes();
     </script>
 </body>
 </html>

@@ -12,7 +12,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -36,24 +39,43 @@ public class DashboardController {
         List<Materia> materias = materiaRepo.findByUsuarioId(usuario.getId());
         List<SessaoEstudo> sessoes = sessaoRepo.findByUsuarioId(usuario.getId());
 
-        // CORREÇÃO: Usando tempoMinutos, questoesFeitas e teveRedacao do seu modelo
+        // Estatísticas Globais
         int totalQuestoes = sessoes.stream().mapToInt(s -> s.getQuestoesFeitas() != null ? s.getQuestoesFeitas() : 0).sum();
         int totalMinutos = sessoes.stream().mapToInt(s -> s.getTempoMinutos() != null ? s.getTempoMinutos() : 0).sum();
         long totalRedacoes = sessoes.stream().filter(s -> Boolean.TRUE.equals(s.getTeveRedacao())).count();
-        
         double totalHoras = totalMinutos / 60.0;
 
-        // Dados para os Gráficos
+        // 1. DADOS PARA O GRÁFICO DE ROSQUINHA (Horas por Matéria)
         List<String> nomesMaterias = materias.stream().map(Materia::getNome).collect(Collectors.toList());
-        List<Integer> questoesPorMateria = materias.stream().map(Materia::getTotalQuestoesRespondidas).collect(Collectors.toList());
+        List<String> coresMaterias = materias.stream().map(Materia::getCorHex).collect(Collectors.toList());
+        List<Double> horasPorMateria = materias.stream().map(m -> {
+            int minutos = sessoes.stream()
+                    .filter(s -> s.getMateria().getId().equals(m.getId()))
+                    .mapToInt(s -> s.getTempoMinutos() != null ? s.getTempoMinutos() : 0).sum();
+            return minutos / 60.0;
+        }).collect(Collectors.toList());
+
+        // 2. DADOS PARA O GRÁFICO DE QUESTÕES NO TEMPO
+        List<Map<String, Object>> dadosSessoes = sessoes.stream().map(s -> {
+            Map<String, Object> map = new HashMap<>();
+            // Formata a data para YYYY-MM-DD
+            map.put("data", s.getDataSessao().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            map.put("materia", s.getMateria().getNome());
+            map.put("questoes", s.getQuestoesFeitas() != null ? s.getQuestoesFeitas() : 0);
+            return map;
+        }).collect(Collectors.toList());
 
         model.addAttribute("usuario", usuario);
         model.addAttribute("totalQuestoes", totalQuestoes);
-        model.addAttribute("totalHoras", String.format("%.1f", totalHoras));
+        // Usamos formatação Locale para evitar problemas de vírgula/ponto
+        model.addAttribute("totalHoras", String.format(java.util.Locale.US, "%.1f", totalHoras));
         model.addAttribute("totalRedacoes", totalRedacoes);
         
-        model.addAttribute("labelsMaterias", nomesMaterias);
-        model.addAttribute("dadosQuestoes", questoesPorMateria);
+        // Enviando os dados de gráficos para o HTML
+        model.addAttribute("nomesMaterias", nomesMaterias);
+        model.addAttribute("coresMaterias", coresMaterias);
+        model.addAttribute("horasPorMateria", horasPorMateria);
+        model.addAttribute("dadosSessoes", dadosSessoes);
 
         return "dashboard/index";
     }
