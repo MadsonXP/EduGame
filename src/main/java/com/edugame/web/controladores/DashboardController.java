@@ -13,6 +13,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,16 +59,25 @@ public class DashboardController {
         // 2. DADOS PARA O GRÁFICO DE QUESTÕES NO TEMPO
         List<Map<String, Object>> dadosSessoes = sessoes.stream().map(s -> {
             Map<String, Object> map = new HashMap<>();
-            // Formata a data para YYYY-MM-DD
             map.put("data", s.getDataSessao().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
             map.put("materia", s.getMateria().getNome());
             map.put("questoes", s.getQuestoesFeitas() != null ? s.getQuestoesFeitas() : 0);
             return map;
         }).collect(Collectors.toList());
 
+        // 3. DADOS PARA O GRÁFICO DE REDAÇÕES (Evolução da Nota)
+        List<Map<String, Object>> dadosRedacoes = sessoes.stream()
+                .filter(s -> Boolean.TRUE.equals(s.getTeveRedacao()))
+                .sorted(Comparator.comparing(SessaoEstudo::getDataSessao)) // Ordenar da mais antiga para a mais recente
+                .map(s -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("data", s.getDataSessao().format(DateTimeFormatter.ofPattern("dd/MM"))); // Apenas dia e mês para ficar limpo
+                    map.put("nota", s.getNotaRedacao() != null ? s.getNotaRedacao() : 0.0);
+                    return map;
+                }).collect(Collectors.toList());
+
         model.addAttribute("usuario", usuario);
         model.addAttribute("totalQuestoes", totalQuestoes);
-        // Usamos formatação Locale para evitar problemas de vírgula/ponto
         model.addAttribute("totalHoras", String.format(java.util.Locale.US, "%.1f", totalHoras));
         model.addAttribute("totalRedacoes", totalRedacoes);
         
@@ -76,6 +86,7 @@ public class DashboardController {
         model.addAttribute("coresMaterias", coresMaterias);
         model.addAttribute("horasPorMateria", horasPorMateria);
         model.addAttribute("dadosSessoes", dadosSessoes);
+        model.addAttribute("dadosRedacoes", dadosRedacoes);
 
         return "dashboard/index";
     }

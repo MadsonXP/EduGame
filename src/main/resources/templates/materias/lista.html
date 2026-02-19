@@ -13,12 +13,17 @@
         .form-group { margin-bottom: 15px; }
         label { display: block; font-size: 0.85em; margin-bottom: 5px; color: #a6adc8; }
         input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #45475a; background: #181825; color: white; box-sizing: border-box; }
+        
+        /* Ajuste para alinhar os campos do calendário que são brancos no chrome */
+        input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
         .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-materia { background: #fab387; color: #11111b; }
         .btn-sessao { background: #a6e3a1; color: #11111b; }
         .btn:hover { opacity: 0.8; transform: translateY(-2px); }
         .back-link { color: #89b4fa; text-decoration: none; font-weight: bold; }
         #campoNotaRedacao { display: none; margin-top: 15px; border-top: 1px solid #45475a; padding-top: 15px; }
+        .erro-msg { color: #f38ba8; font-size: 0.85em; margin-top: 5px; display: none; background: rgba(243, 139, 168, 0.1); padding: 10px; border-radius: 5px; border: 1px solid #f38ba8;}
     </style>
 </head>
 <body>
@@ -46,7 +51,8 @@
 
             <div class="card">
                 <h2>⚔️ 2. Registrar Batalha</h2>
-                <form th:action="@{/materias/registrar-sessao}" th:object="${novaSessao}" method="post">
+                <form th:action="@{/materias/registrar-sessao}" th:object="${novaSessao}" method="post" onsubmit="return validarBatalha(event)">
+                    
                     <div class="form-group">
                         <label>Matéria Enfrentada</label>
                         <select name="materiaId" required>
@@ -54,27 +60,41 @@
                             <option th:each="m : ${materias}" th:value="${m.id}" th:text="${m.nome}"></option>
                         </select>
                     </div>
+
                     <div class="form-group">
                         <label>Assunto do Treino</label>
                         <input type="text" th:field="*{assunto}" placeholder="Ex: Geometria, Redação Modelo Enem..." required>
                     </div>
                     
-                    <div style="display: flex; gap: 10px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>Tempo (min)</label>
-                            <input type="number" th:field="*{tempoMinutos}" required min="1">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <div class="form-group" style="flex: 1.5;">
+                            <label>Data da Batalha</label>
+                            <input type="date" name="dataEstudo" id="dataEstudo" required>
                         </div>
                         <div class="form-group" style="flex: 1;">
-                            <label>Questões</label>
-                            <input type="number" th:field="*{questoesFeitas}" value="0">
+                            <label>Início</label>
+                            <input type="time" name="horaInicio" id="horaInicio" required>
                         </div>
                         <div class="form-group" style="flex: 1;">
-                            <label>Acertos</label>
-                            <input type="number" th:field="*{questoesAcertos}" value="0">
+                            <label>Fim</label>
+                            <input type="time" name="horaFim" id="horaFim" required>
                         </div>
                     </div>
 
-                    <div class="form-group" style="background: #181825; padding: 15px; border-radius: 8px;">
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Questões Feitas</label>
+                            <input type="number" id="inputQuestoes" th:field="*{questoesFeitas}" value="0" min="0" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Acertos</label>
+                            <input type="number" id="inputAcertos" th:field="*{questoesAcertos}" value="0" min="0" required>
+                        </div>
+                    </div>
+
+                    <div id="erroForm" class="erro-msg">⚠️ Erro!</div>
+
+                    <div class="form-group" style="background: #181825; padding: 15px; border-radius: 8px; margin-top: 15px;">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
                             <input type="checkbox" th:field="*{teveRedacao}" id="checkRedacao" style="width: auto;" onchange="toggleRedacao()">
                             Produziu uma Redação nesta sessão?
@@ -93,11 +113,66 @@
     </div>
 
     <script>
+        // Quando a página carrega, define a data de hoje como padrão e "bloqueia" datas futuras
+        window.onload = function() {
+            const inputData = document.getElementById('dataEstudo');
+            const hoje = new Date().toISOString().split('T')[0];
+            inputData.max = hoje; // Impede clicar num dia de amanhã
+            inputData.value = hoje; // Já vem preenchido com o dia de hoje
+        };
+
         function toggleRedacao() {
             const checkbox = document.getElementById('checkRedacao');
             const divNota = document.getElementById('campoNotaRedacao');
-            // Mostra o campo de nota apenas se o checkbox estiver ativo
             divNota.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        // --- SISTEMA DE VALIDAÇÃO (TEMPO E ANTI-CHEAT) ---
+        function validarBatalha(event) {
+            const msgErro = document.getElementById('erroForm');
+            msgErro.style.display = 'none'; // Reseta a mensagem de erro a cada tentativa
+
+            // 1. Validar Tempos
+            const dataEstudo = document.getElementById('dataEstudo').value;
+            const horaInicio = document.getElementById('horaInicio').value;
+            const horaFim = document.getElementById('horaFim').value;
+            const hoje = new Date().toISOString().split('T')[0];
+
+            if (horaFim <= horaInicio) {
+                msgErro.innerHTML = '⚠️ <strong>Erro Temporal:</strong> O horário de fim deve ser depois do horário de início!';
+                msgErro.style.display = 'block';
+                event.preventDefault(); return false;
+            }
+
+            // Se for hoje, a hora do fim não pode ser no futuro!
+            if (dataEstudo === hoje) {
+                const agora = new Date();
+                const horaAtual = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+                
+                if (horaFim > horaAtual) {
+                    msgErro.innerHTML = '⚠️ <strong>Viajante do Tempo?</strong> Não podes registrar um treino num horário que ainda não chegou!';
+                    msgErro.style.display = 'block';
+                    event.preventDefault(); return false;
+                }
+            }
+
+            // 2. Validar Anti-Cheat (Questões e Acertos)
+            const inputQ = document.getElementById('inputQuestoes');
+            const inputA = document.getElementById('inputAcertos');
+            
+            if (inputQ.value.trim() === '') inputQ.value = '0';
+            if (inputA.value.trim() === '') inputA.value = '0';
+
+            const questoes = parseInt(inputQ.value);
+            const acertos = parseInt(inputA.value);
+
+            if (acertos > questoes) {
+                msgErro.innerHTML = '⚠️ <strong>Fraude Detetada:</strong> Não podes ter mais acertos do que questões feitas!';
+                msgErro.style.display = 'block';
+                event.preventDefault(); return false;
+            }
+            
+            return true;
         }
     </script>
 </body>

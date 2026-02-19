@@ -12,7 +12,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Controller
@@ -63,6 +66,9 @@ public class MateriaController {
     @PostMapping("/registrar-sessao")
     public String registrarSessao(@ModelAttribute("novaSessao") SessaoEstudo sessao, 
                                 @RequestParam Long materiaId, 
+                                @RequestParam String dataEstudo,
+                                @RequestParam String horaInicio,
+                                @RequestParam String horaFim,
                                 @AuthenticationPrincipal UserDetails userDetails) {
         
         Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
@@ -70,18 +76,57 @@ public class MateriaController {
 
         sessao.setUsuario(usuario);
         sessao.setMateria(materia);
-        sessao.setDataSessao(LocalDateTime.now());
+
+        // ==========================================
+        // 🕒 SISTEMA DE TEMPO (INÍCIO, FIM E DATA)
+        // ==========================================
+        LocalDate data = LocalDate.parse(dataEstudo);
+        LocalTime inicio = LocalTime.parse(horaInicio);
+        LocalTime fim = LocalTime.parse(horaFim);
+
+        LocalDateTime dataSessaoFinal = LocalDateTime.of(data, fim);
+
+        // Bloqueia tentativas de registar no futuro
+        if (dataSessaoFinal.isAfter(LocalDateTime.now())) {
+            dataSessaoFinal = LocalDateTime.now();
+        }
+        sessao.setDataSessao(dataSessaoFinal);
+
+        // Cálculo de duração em minutos
+        long minutos = Duration.between(inicio, fim).toMinutes();
+        if (minutos <= 0) minutos = 1; 
+        sessao.setTempoMinutos((int) minutos);
 
         if (Boolean.FALSE.equals(sessao.getTeveRedacao())) {
             sessao.setNotaRedacao(null);
         }
 
-        // Prevenção de Null: Garante que os valores sejam no mínimo 0
         int tempo = sessao.getTempoMinutos() != null ? sessao.getTempoMinutos() : 0;
         int qFeitas = sessao.getQuestoesFeitas() != null ? sessao.getQuestoesFeitas() : 0;
         int qAcertos = sessao.getQuestoesAcertos() != null ? sessao.getQuestoesAcertos() : 0;
 
-        // Atualiza status da matéria
+        // ==========================================
+        // 🛡️ SISTEMA ANTI-CHEAT 
+        // ==========================================
+        if (qAcertos > qFeitas) {
+            qAcertos = qFeitas;
+            sessao.setQuestoesAcertos(qAcertos);
+        }
+
+        // ==========================================
+        // 🐉 SISTEMA DE BOSS: CONVERSÃO DE REDAÇÃO
+        // ==========================================
+        if (Boolean.TRUE.equals(sessao.getTeveRedacao()) && sessao.getNotaRedacao() != null) {
+            int pesoRedacao = 10; // O "peso" em volume de 1 redação
+            
+            // CORREÇÃO APLICADA AQUI COM O (int)
+            int acertosRedacao = (int) (sessao.getNotaRedacao() / 100); 
+            
+            // Soma o esforço da redação nas questões da sessão antes de guardar na matéria
+            qFeitas += pesoRedacao;
+            qAcertos += acertosRedacao;
+        }
+
         if (materia != null) {
             int qAnteriores = materia.getTotalQuestoesRespondidas() != null ? materia.getTotalQuestoesRespondidas() : 0;
             int aAnteriores = materia.getTotalAcertos() != null ? materia.getTotalAcertos() : 0;
@@ -94,34 +139,50 @@ public class MateriaController {
         sessaoRepo.save(sessao);
 
         // ==========================================
-        // ⚔️ SISTEMA DE RPG: DISTRIBUIÇÃO DE EXP E RANK
+        // ⚔️ SISTEMA DE RPG: DISTRIBUIÇÃO DE EXP E RANK GLOBAL
         // ==========================================
         if (usuario != null) {
             int expGanha = 0;
-            expGanha += tempo * 2;    // 2 EXP por minuto de foco
-            expGanha += qFeitas * 5;  // 5 EXP por questão resolvida
-            expGanha += qAcertos * 10; // 10 de Bônus por acerto
+            expGanha += tempo * 2;    
+            expGanha += qFeitas * 5;  
+            expGanha += qAcertos * 10; 
 
             if (Boolean.TRUE.equals(sessao.getTeveRedacao()) && sessao.getNotaRedacao() != null) {
-                expGanha += (int) (sessao.getNotaRedacao() / 2); // Ex: Nota 900 dá 450 EXP
+                expGanha += (int) (sessao.getNotaRedacao() / 2); 
             }
 
             usuario.ganharExp(expGanha);
             
-            // Aqui calculamos o Rank Global do Caçador
+            // --- NOVO SISTEMA DE RANK GERAL (MÉDIA DAS MATÉRIAS COM TRAVA DE VOLUME) ---
             List<Materia> todasMaterias = materiaRepo.findByUsuarioId(usuario.getId());
-            int totalQ = todasMaterias.stream().mapToInt(m -> m.getTotalQuestoesRespondidas() != null ? m.getTotalQuestoesRespondidas() : 0).sum();
-            int totalA = todasMaterias.stream().mapToInt(m -> m.getTotalAcertos() != null ? m.getTotalAcertos() : 0).sum();
+            
+            double somaAproveitamentos = 0;
+            int materiasComBatalha = 0;
+            int totalQuestoesGlobal = 0;
 
-            if (totalQ > 0) {
-                double aprov = ((double) totalA / totalQ) * 100;
-                if (aprov >= 95) usuario.setRankGeral("SS");
-                else if (aprov >= 85) usuario.setRankGeral("S");
-                else if (aprov >= 75) usuario.setRankGeral("A");
-                else if (aprov >= 65) usuario.setRankGeral("B");
-                else if (aprov >= 50) usuario.setRankGeral("C");
-                else if (aprov >= 40) usuario.setRankGeral("D");
-                else if (aprov >= 25) usuario.setRankGeral("E");
+            for (Materia m : todasMaterias) {
+                int q = m.getTotalQuestoesRespondidas() != null ? m.getTotalQuestoesRespondidas() : 0;
+                int a = m.getTotalAcertos() != null ? m.getTotalAcertos() : 0;
+                
+                totalQuestoesGlobal += q;
+
+                // Apenas as disciplinas em que já batalhaste entram para a média
+                if (q > 0) {
+                    somaAproveitamentos += ((double) a / q) * 100;
+                    materiasComBatalha++;
+                }
+            }
+
+            if (materiasComBatalha > 0) {
+                double mediaGeral = somaAproveitamentos / materiasComBatalha;
+                
+                if (mediaGeral >= 90 && totalQuestoesGlobal >= 500) usuario.setRankGeral("SS");
+                else if (mediaGeral >= 80 && totalQuestoesGlobal >= 250) usuario.setRankGeral("S");
+                else if (mediaGeral >= 75 && totalQuestoesGlobal >= 100) usuario.setRankGeral("A");
+                else if (mediaGeral >= 65 && totalQuestoesGlobal >= 50) usuario.setRankGeral("B");
+                else if (mediaGeral >= 50 && totalQuestoesGlobal >= 20) usuario.setRankGeral("C");
+                else if (mediaGeral >= 40) usuario.setRankGeral("D");
+                else if (mediaGeral >= 25) usuario.setRankGeral("E");
                 else usuario.setRankGeral("F");
             }
             usuarioRepo.save(usuario);
