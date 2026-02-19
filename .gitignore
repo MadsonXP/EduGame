@@ -1,0 +1,22 @@
+# Pasta de dados do EduGame (O seu Memory Card pessoal)
+/dados_salvos/
+
+# Ficheiros do Banco de Dados H2 que podem aparecer na raiz
+*.mv.db
+*.trace.db
+
+# Compilação e Binários (Java/Maven)
+/target/
+*.class
+
+# Configurações do VS Code e IDEs
+.vscode/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# Ficheiros de sistema
+.DS_Store
+Thumbs.db
