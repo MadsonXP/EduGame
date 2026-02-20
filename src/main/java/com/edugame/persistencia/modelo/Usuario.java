@@ -72,4 +72,22 @@ public class Usuario {
             this.expParaProximoNivel = (int) (this.expParaProximoNivel * 1.2); 
         }
     }
+
+    // NOVO: Método para reverter a EXP e o Nível caso um registo seja apagado
+    public void removerExp(int expPerdida) {
+        this.expAtual -= expPerdida;
+        
+        // Se a EXP ficar negativa e não estiver no nível 1, desce de nível (Level Down)!
+        while (this.expAtual < 0 && this.nivel > 1) {
+            this.nivel--;
+            // Faz o cálculo inverso (divide por 1.2) para saber a EXP do nível anterior
+            this.expParaProximoNivel = (int) (this.expParaProximoNivel / 1.2); 
+            this.expAtual += this.expParaProximoNivel;
+        }
+        
+        // Trava de segurança para não ficar com EXP negativa no Nível 1
+        if (this.nivel == 1 && this.expAtual < 0) {
+            this.expAtual = 0;
+        }
+    }
 }

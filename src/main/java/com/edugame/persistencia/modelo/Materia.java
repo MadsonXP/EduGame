@@ -44,28 +44,27 @@ public class Materia {
     @Column(name = "total_acertos", nullable = false)
     private Integer totalAcertos = 0;
 
-   // Método mágico: Calcula o Rank da matéria com balanceamento de RPG (Exige volume!)
+    // Método mágico: Calcula o Rank da matéria (Sistema Hardcore)
     public String getRankAtual() {
-        if (totalQuestoesRespondidas == null || totalQuestoesRespondidas == 0) return "F"; 
+        // Se tem menos de 10 questões resolvidas, é automaticamente F (Sem conversa!)
+        if (totalQuestoesRespondidas == null || totalQuestoesRespondidas < 10) return "F"; 
         
         double aproveitamento = ((double) totalAcertos / totalQuestoesRespondidas) * 100;
         
-        // Para ser SS, tem de ter 90%+ de acerto E já ter feito pelo menos 200 questões na matéria
-        if (aproveitamento >= 90 && totalQuestoesRespondidas >= 200) return "SS"; // Divino
+        // Exigências brutais para o topo:
+        if (aproveitamento >= 95 && totalQuestoesRespondidas >= 300) return "SS"; // Lendário
+        if (aproveitamento >= 90 && totalQuestoesRespondidas >= 150) return "S";  // Mestre
+        if (aproveitamento >= 80 && totalQuestoesRespondidas >= 100) return "A";  // Elite
         
-        // Para ser S, 80%+ E pelo menos 100 questões
-        if (aproveitamento >= 80 && totalQuestoesRespondidas >= 100) return "S";  // Mestre
+        // O meio do caminho agora exige notas de corte altas:
+        if (aproveitamento >= 70 && totalQuestoesRespondidas >= 50) return "B";   // Veterano
+        if (aproveitamento >= 60 && totalQuestoesRespondidas >= 30) return "C";   // Aventureiro
         
-        // Para ser A, 75%+ E pelo menos 50 questões
-        if (aproveitamento >= 75 && totalQuestoesRespondidas >= 50) return "A";   // Elite
+        // Base mais punitiva:
+        if (aproveitamento >= 50 && totalQuestoesRespondidas >= 20) return "D";   // Iniciante
+        if (aproveitamento >= 40 && totalQuestoesRespondidas >= 10) return "E";   // Aprendiz
         
-        // Ranks mais baixos exigem menos volume
-        if (aproveitamento >= 65 && totalQuestoesRespondidas >= 30) return "B";   // Veterano
-        if (aproveitamento >= 50 && totalQuestoesRespondidas >= 10) return "C";   // Aventureiro
-        
-        // Ranks base (apenas a percentagem conta)
-        if (aproveitamento >= 40) return "D";  // Iniciante
-        if (aproveitamento >= 25) return "E";  // Aprendiz
-        return "F";                            // Novato
+        // Se aproveitamento for menor que 40%, continua no fundo:
+        return "F";                                                               // Novato
     }
 }

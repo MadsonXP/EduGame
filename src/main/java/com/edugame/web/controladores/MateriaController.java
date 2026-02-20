@@ -77,22 +77,17 @@ public class MateriaController {
         sessao.setUsuario(usuario);
         sessao.setMateria(materia);
 
-        // ==========================================
-        // 🕒 SISTEMA DE TEMPO (INÍCIO, FIM E DATA)
-        // ==========================================
         LocalDate data = LocalDate.parse(dataEstudo);
         LocalTime inicio = LocalTime.parse(horaInicio);
         LocalTime fim = LocalTime.parse(horaFim);
 
         LocalDateTime dataSessaoFinal = LocalDateTime.of(data, fim);
 
-        // Bloqueia tentativas de registar no futuro
         if (dataSessaoFinal.isAfter(LocalDateTime.now())) {
             dataSessaoFinal = LocalDateTime.now();
         }
         sessao.setDataSessao(dataSessaoFinal);
 
-        // Cálculo de duração em minutos
         long minutos = Duration.between(inicio, fim).toMinutes();
         if (minutos <= 0) minutos = 1; 
         sessao.setTempoMinutos((int) minutos);
@@ -105,24 +100,14 @@ public class MateriaController {
         int qFeitas = sessao.getQuestoesFeitas() != null ? sessao.getQuestoesFeitas() : 0;
         int qAcertos = sessao.getQuestoesAcertos() != null ? sessao.getQuestoesAcertos() : 0;
 
-        // ==========================================
-        // 🛡️ SISTEMA ANTI-CHEAT 
-        // ==========================================
         if (qAcertos > qFeitas) {
             qAcertos = qFeitas;
             sessao.setQuestoesAcertos(qAcertos);
         }
 
-        // ==========================================
-        // 🐉 SISTEMA DE BOSS: CONVERSÃO DE REDAÇÃO
-        // ==========================================
         if (Boolean.TRUE.equals(sessao.getTeveRedacao()) && sessao.getNotaRedacao() != null) {
-            int pesoRedacao = 10; // O "peso" em volume de 1 redação
-            
-            // CORREÇÃO APLICADA AQUI COM O (int)
+            int pesoRedacao = 10; 
             int acertosRedacao = (int) (sessao.getNotaRedacao() / 100); 
-            
-            // Soma o esforço da redação nas questões da sessão antes de guardar na matéria
             qFeitas += pesoRedacao;
             qAcertos += acertosRedacao;
         }
@@ -138,56 +123,198 @@ public class MateriaController {
         
         sessaoRepo.save(sessao);
 
-        // ==========================================
-        // ⚔️ SISTEMA DE RPG: DISTRIBUIÇÃO DE EXP E RANK GLOBAL
-        // ==========================================
         if (usuario != null) {
-            int expGanha = 0;
-            expGanha += tempo * 2;    
-            expGanha += qFeitas * 5;  
-            expGanha += qAcertos * 10; 
-
+            int expGanha = (tempo * 2) + (qFeitas * 5) + (qAcertos * 10); 
             if (Boolean.TRUE.equals(sessao.getTeveRedacao()) && sessao.getNotaRedacao() != null) {
                 expGanha += (int) (sessao.getNotaRedacao() / 2); 
             }
-
             usuario.ganharExp(expGanha);
-            
-            // --- NOVO SISTEMA DE RANK GERAL (MÉDIA DAS MATÉRIAS COM TRAVA DE VOLUME) ---
-            List<Materia> todasMaterias = materiaRepo.findByUsuarioId(usuario.getId());
-            
-            double somaAproveitamentos = 0;
-            int materiasComBatalha = 0;
-            int totalQuestoesGlobal = 0;
-
-            for (Materia m : todasMaterias) {
-                int q = m.getTotalQuestoesRespondidas() != null ? m.getTotalQuestoesRespondidas() : 0;
-                int a = m.getTotalAcertos() != null ? m.getTotalAcertos() : 0;
-                
-                totalQuestoesGlobal += q;
-
-                // Apenas as disciplinas em que já batalhaste entram para a média
-                if (q > 0) {
-                    somaAproveitamentos += ((double) a / q) * 100;
-                    materiasComBatalha++;
-                }
-            }
-
-            if (materiasComBatalha > 0) {
-                double mediaGeral = somaAproveitamentos / materiasComBatalha;
-                
-                if (mediaGeral >= 90 && totalQuestoesGlobal >= 500) usuario.setRankGeral("SS");
-                else if (mediaGeral >= 80 && totalQuestoesGlobal >= 250) usuario.setRankGeral("S");
-                else if (mediaGeral >= 75 && totalQuestoesGlobal >= 100) usuario.setRankGeral("A");
-                else if (mediaGeral >= 65 && totalQuestoesGlobal >= 50) usuario.setRankGeral("B");
-                else if (mediaGeral >= 50 && totalQuestoesGlobal >= 20) usuario.setRankGeral("C");
-                else if (mediaGeral >= 40) usuario.setRankGeral("D");
-                else if (mediaGeral >= 25) usuario.setRankGeral("E");
-                else usuario.setRankGeral("F");
-            }
-            usuarioRepo.save(usuario);
+            atualizarRankGlobal(usuario);
         }
 
         return "redirect:/dashboard";
+    }
+
+    @PostMapping("/historico/deletar")
+    public String deletarSessao(@RequestParam Long sessaoId, @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
+        SessaoEstudo sessao = sessaoRepo.findById(sessaoId).orElse(null);
+
+        if (usuario != null && sessao != null && sessao.getUsuario().getId().equals(usuario.getId())) {
+            Materia materia = sessao.getMateria();
+
+            int tempo = sessao.getTempoMinutos() != null ? sessao.getTempoMinutos() : 0;
+            int qFeitas = sessao.getQuestoesFeitas() != null ? sessao.getQuestoesFeitas() : 0;
+            int qAcertos = sessao.getQuestoesAcertos() != null ? sessao.getQuestoesAcertos() : 0;
+            int expRemover = (tempo * 2) + (qFeitas * 5) + (qAcertos * 10);
+
+            if (Boolean.TRUE.equals(sessao.getTeveRedacao()) && sessao.getNotaRedacao() != null) {
+                qFeitas += 10;
+                qAcertos += (int) (sessao.getNotaRedacao() / 100);
+                expRemover += (int) (sessao.getNotaRedacao() / 2);
+            }
+
+            if (materia != null) {
+                materia.setTotalQuestoesRespondidas(Math.max(0, materia.getTotalQuestoesRespondidas() - qFeitas));
+                materia.setTotalAcertos(Math.max(0, materia.getTotalAcertos() - qAcertos));
+                materiaRepo.save(materia);
+            }
+
+            usuario.removerExp(expRemover);
+            sessaoRepo.delete(sessao);
+            atualizarRankGlobal(usuario);
+        }
+        return "redirect:/materias/historico";
+    }
+
+    // ==========================================
+    // ✏️ SISTEMA DE EDIÇÃO DE SESSÃO (CORRIGIDO)
+    // ==========================================
+    @GetMapping("/historico/editar/{id}")
+    public String exibirFormularioEdicao(@PathVariable Long id, Model model, @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
+        SessaoEstudo sessao = sessaoRepo.findById(id).orElse(null);
+
+        if (usuario == null || sessao == null || !sessao.getUsuario().getId().equals(usuario.getId())) {
+            return "redirect:/materias/historico";
+        }
+
+        // Matemática para descobrir a Hora de Início original
+        LocalTime horaFim = sessao.getDataSessao().toLocalTime();
+        int duracao = sessao.getTempoMinutos() != null ? sessao.getTempoMinutos() : 0;
+        LocalTime horaInicio = horaFim.minusMinutes(duracao);
+
+        model.addAttribute("sessao", sessao);
+        model.addAttribute("materias", materiaRepo.findByUsuarioId(usuario.getId()));
+        
+        // Passa os horários formatados para o Thymeleaf preencher o ecrã
+        model.addAttribute("horaInicioFmt", String.format("%02d:%02d", horaInicio.getHour(), horaInicio.getMinute()));
+        model.addAttribute("horaFimFmt", String.format("%02d:%02d", horaFim.getHour(), horaFim.getMinute()));
+
+        return "materias/editar-sessao";
+    }
+
+    @PostMapping("/historico/editar")
+    public String editarSessao(@ModelAttribute("sessao") SessaoEstudo sessaoAtualizada,
+                               @RequestParam Long materiaId,
+                               @RequestParam String dataEstudoStr,
+                               @RequestParam String horaInicioStr,
+                               @RequestParam String horaFimStr,
+                               @AuthenticationPrincipal UserDetails userDetails) {
+        
+        Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
+        SessaoEstudo sessaoAntiga = sessaoRepo.findById(sessaoAtualizada.getId()).orElse(null);
+
+        if (usuario != null && sessaoAntiga != null && sessaoAntiga.getUsuario().getId().equals(usuario.getId())) {
+
+            // --- 1. REVERTER OS STATUS ANTIGOS ---
+            Materia materiaAntiga = sessaoAntiga.getMateria();
+            int tempoAntigo = sessaoAntiga.getTempoMinutos() != null ? sessaoAntiga.getTempoMinutos() : 0;
+            int qFeitasAntigo = sessaoAntiga.getQuestoesFeitas() != null ? sessaoAntiga.getQuestoesFeitas() : 0;
+            int qAcertosAntigo = sessaoAntiga.getQuestoesAcertos() != null ? sessaoAntiga.getQuestoesAcertos() : 0;
+            int expRemover = (tempoAntigo * 2) + (qFeitasAntigo * 5) + (qAcertosAntigo * 10);
+
+            if (Boolean.TRUE.equals(sessaoAntiga.getTeveRedacao()) && sessaoAntiga.getNotaRedacao() != null) {
+                qFeitasAntigo += 10;
+                qAcertosAntigo += (int) (sessaoAntiga.getNotaRedacao() / 100);
+                expRemover += (int) (sessaoAntiga.getNotaRedacao() / 2);
+            }
+
+            if (materiaAntiga != null) {
+                materiaAntiga.setTotalQuestoesRespondidas(Math.max(0, materiaAntiga.getTotalQuestoesRespondidas() - qFeitasAntigo));
+                materiaAntiga.setTotalAcertos(Math.max(0, materiaAntiga.getTotalAcertos() - qAcertosAntigo));
+                materiaRepo.save(materiaAntiga);
+            }
+            usuario.removerExp(expRemover);
+
+            // --- 2. APLICAR OS NOVOS STATUS EDITADOS ---
+            Materia materiaNova = materiaRepo.findById(materiaId).orElse(null);
+            sessaoAntiga.setMateria(materiaNova);
+            sessaoAntiga.setAssunto(sessaoAtualizada.getAssunto());
+
+            LocalDate data = LocalDate.parse(dataEstudoStr);
+            LocalTime inicio = LocalTime.parse(horaInicioStr);
+            LocalTime fim = LocalTime.parse(horaFimStr);
+            
+            LocalDateTime dataSessaoFinal = LocalDateTime.of(data, fim);
+            if (dataSessaoFinal.isAfter(LocalDateTime.now())) dataSessaoFinal = LocalDateTime.now();
+            sessaoAntiga.setDataSessao(dataSessaoFinal);
+
+            // Calcula a duração nova (Início -> Fim)
+            long minutos = Duration.between(inicio, fim).toMinutes();
+            if (minutos <= 0) minutos = 1;
+            int tempoNovo = (int) minutos;
+            sessaoAntiga.setTempoMinutos(tempoNovo);
+
+            sessaoAntiga.setTeveRedacao(sessaoAtualizada.getTeveRedacao());
+            if (Boolean.FALSE.equals(sessaoAntiga.getTeveRedacao())) {
+                sessaoAntiga.setNotaRedacao(null);
+            } else {
+                sessaoAntiga.setNotaRedacao(sessaoAtualizada.getNotaRedacao());
+            }
+
+            int qFeitasNovo = sessaoAtualizada.getQuestoesFeitas() != null ? sessaoAtualizada.getQuestoesFeitas() : 0;
+            int qAcertosNovo = sessaoAtualizada.getQuestoesAcertos() != null ? sessaoAtualizada.getQuestoesAcertos() : 0;
+            if (qAcertosNovo > qFeitasNovo) qAcertosNovo = qFeitasNovo; 
+            
+            sessaoAntiga.setQuestoesFeitas(qFeitasNovo);
+            sessaoAntiga.setQuestoesAcertos(qAcertosNovo);
+
+            int pesoRedacaoNovo = 0;
+            int acertosRedacaoNovo = 0;
+            if (Boolean.TRUE.equals(sessaoAntiga.getTeveRedacao()) && sessaoAntiga.getNotaRedacao() != null) {
+                pesoRedacaoNovo = 10;
+                acertosRedacaoNovo = (int) (sessaoAntiga.getNotaRedacao() / 100);
+            }
+
+            if (materiaNova != null) {
+                materiaNova.setTotalQuestoesRespondidas(materiaNova.getTotalQuestoesRespondidas() + qFeitasNovo + pesoRedacaoNovo);
+                materiaNova.setTotalAcertos(materiaNova.getTotalAcertos() + qAcertosNovo + acertosRedacaoNovo);
+                materiaRepo.save(materiaNova);
+            }
+
+            int expGanha = (tempoNovo * 2) + (qFeitasNovo * 5) + (qAcertosNovo * 10);
+            if (Boolean.TRUE.equals(sessaoAntiga.getTeveRedacao()) && sessaoAntiga.getNotaRedacao() != null) {
+                expGanha += (int) (sessaoAntiga.getNotaRedacao() / 2);
+            }
+            usuario.ganharExp(expGanha); 
+            
+            sessaoRepo.save(sessaoAntiga);
+            atualizarRankGlobal(usuario);
+        }
+
+        return "redirect:/materias/historico";
+    }
+
+    private void atualizarRankGlobal(Usuario usuario) {
+        List<Materia> todasMaterias = materiaRepo.findByUsuarioId(usuario.getId());
+        double somaAproveitamentos = 0;
+        int materiasComBatalha = 0;
+        int totalQuestoesGlobal = 0;
+
+        for (Materia m : todasMaterias) {
+            int q = m.getTotalQuestoesRespondidas() != null ? m.getTotalQuestoesRespondidas() : 0;
+            int a = m.getTotalAcertos() != null ? m.getTotalAcertos() : 0;
+            totalQuestoesGlobal += q;
+            if (q > 0) {
+                somaAproveitamentos += ((double) a / q) * 100;
+                materiasComBatalha++;
+            }
+        }
+
+        if (materiasComBatalha > 0) {
+            double mediaGeral = somaAproveitamentos / materiasComBatalha;
+            if (mediaGeral >= 95 && totalQuestoesGlobal >= 1000) usuario.setRankGeral("SS");
+            else if (mediaGeral >= 90 && totalQuestoesGlobal >= 500) usuario.setRankGeral("S");
+            else if (mediaGeral >= 80 && totalQuestoesGlobal >= 300) usuario.setRankGeral("A");
+            else if (mediaGeral >= 70 && totalQuestoesGlobal >= 150) usuario.setRankGeral("B");
+            else if (mediaGeral >= 60 && totalQuestoesGlobal >= 80) usuario.setRankGeral("C");
+            else if (mediaGeral >= 50 && totalQuestoesGlobal >= 40) usuario.setRankGeral("D");
+            else if (mediaGeral >= 40 && totalQuestoesGlobal >= 20) usuario.setRankGeral("E");
+            else usuario.setRankGeral("F");
+        } else {
+            usuario.setRankGeral("F");
+        }
+        usuarioRepo.save(usuario);
     }
 }

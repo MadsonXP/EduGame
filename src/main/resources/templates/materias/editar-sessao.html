@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>EduGame - Forja do Tempo</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e2e; color: #cdd6f4; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #313244; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-top: 5px solid #f9e2af; margin-top: 50px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-size: 0.85em; margin-bottom: 8px; color: #bac2de; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #45475a; background: #181825; color: white; box-sizing: border-box; }
+        input:focus, select:focus { outline: none; border-color: #f9e2af; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: #f9e2af; color: #11111b; font-size: 1rem; margin-top: 10px; transition: 0.3s;}
+        .btn:hover { background: #e5c890; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>⏳ Reescrever o Passado</h2>
+        <p style="color: #a6adc8; font-size: 0.9em; margin-bottom: 25px;">Ajusta os detalhes desta batalha. A tua EXP e os teus Ranks serão recalculados de forma justa.</p>
+
+        <form th:action="@{/materias/historico/editar}" th:object="${sessao}" method="post">
+            <input type="hidden" th:field="*{id}">
+
+            <div class="form-group">
+                <label>Disciplina</label>
+                <select name="materiaId" required>
+                    <option th:each="m : ${materias}" th:value="${m.id}" th:text="${m.nome}" th:selected="${m.id == sessao.materia.id}"></option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Assunto (O que estudaste?)</label>
+                <input type="text" th:field="*{assunto}" required>
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Data da Batalha</label>
+                    <input type="date" name="dataEstudoStr" th:value="${#temporals.format(sessao.dataSessao, 'yyyy-MM-dd')}" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Hora de Início</label>
+                    <input type="time" name="horaInicioStr" th:value="${horaInicioFmt}" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Hora de Fim</label>
+                    <input type="time" name="horaFimStr" th:value="${horaFimFmt}" required>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Questões Feitas</label>
+                    <input type="number" th:field="*{questoesFeitas}" min="0">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Questões Acertadas</label>
+                    <input type="number" th:field="*{questoesAcertos}" min="0">
+                </div>
+            </div>
+
+            <div class="form-group" style="background: rgba(250, 179, 135, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #fab387;">
+                <label style="color: #fab387; font-size: 1em;">
+                    <input type="checkbox" th:field="*{teveRedacao}" id="checkRedacaoEdit">
+                    Fiz uma Redação (Boss Battle)
+                </label>
+                <input type="number" th:field="*{notaRedacao}" id="notaRedacaoEdit" placeholder="Nota da Redação (0 - 1000)" max="1000" min="0" style="margin-top: 10px;">
+            </div>
+
+            <button type="submit" class="btn">Confirmar Alteração no Tempo</button>
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="/materias/historico" style="color: #f38ba8; text-decoration: none; font-weight: bold; font-size: 0.9em;">Cancelar Viagem</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const check = document.getElementById('checkRedacaoEdit');
+        const nota = document.getElementById('notaRedacaoEdit');
+        function toggleRedacao() { nota.style.display = check.checked ? 'block' : 'none'; }
+        check.addEventListener('change', toggleRedacao);
+        toggleRedacao(); 
+    </script>
+</body>
+</html>

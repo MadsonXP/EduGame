@@ -11,7 +11,12 @@
         th { background-color: #38394c; color: #89b4fa; text-transform: uppercase; font-size: 0.8em; }
         .badge-materia { padding: 5px 10px; border-radius: 20px; color: #11111b; font-weight: bold; font-size: 0.8em; }
         .redacao-badge { color: #fab387; font-weight: bold; }
-        .back-link { color: #89b4fa; text-decoration: none; font-weight: bold; }
+        .btn-deletar { background: rgba(243, 139, 168, 0.15); color: #f38ba8; border: 1px solid #f38ba8; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-deletar:hover { background: #f38ba8; color: #11111b; }
+        
+        /* O Novo Botão de Editar */
+        .btn-editar { background: rgba(249, 226, 175, 0.15); color: #f9e2af; border: 1px solid #f9e2af; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; text-decoration: none; font-size: 0.9em; display: inline-block; }
+        .btn-editar:hover { background: #f9e2af; color: #11111b; }
     </style>
 </head>
 <body>
@@ -27,6 +32,7 @@
                     <th>Assunto</th>
                     <th>Tempo</th>
                     <th>Desempenho</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -45,6 +51,18 @@
                         </div>
                         <div th:unless="${s.teveRedacao}">
                             🎯 <span th:text="${s.questoesAcertos}">0</span> / <span th:text="${s.questoesFeitas}">0</span> acertos
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <a th:href="@{/materias/historico/editar/{id}(id=${s.id})}" class="btn-editar">✏️ Editar</a>
+                            
+                            <form th:action="@{/materias/historico/deletar}" method="post" 
+                                  onsubmit="return confirm('ATENÇÃO: Tens a certeza que queres anular este registo? A tua EXP, o Nível e os Ranks vão ser recalculados para baixo!');" 
+                                  style="margin: 0;">
+                                <input type="hidden" name="sessaoId" th:value="${s.id}">
+                                <button type="submit" class="btn-deletar">🗑️ Anular</button>
+                            </form>
                         </div>
                     </td>
                 </tr>
