@@ -285,7 +285,38 @@ public class MateriaController {
 
         return "redirect:/materias/historico";
     }
+// ==========================================
+    // 🏷️ SISTEMA DE EDIÇÃO DE MATÉRIA
+    // ==========================================
+    @GetMapping("/editar/{id}")
+    public String exibirFormularioEdicaoMateria(@PathVariable Long id, Model model, @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
+        Materia materia = materiaRepo.findById(id).orElse(null);
 
+        // Segurança: Só permite aceder se a matéria for do próprio utilizador
+        if (usuario == null || materia == null || !materia.getUsuario().getId().equals(usuario.getId())) {
+            return "redirect:/materias";
+        }
+
+        model.addAttribute("materia", materia);
+        return "materias/editar-materia";
+    }
+
+    @PostMapping("/editar")
+    public String editarMateria(@ModelAttribute("materia") Materia materiaAtualizada, @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioRepo.findByEmail(userDetails.getUsername()).orElse(null);
+        Materia materiaAntiga = materiaRepo.findById(materiaAtualizada.getId()).orElse(null);
+
+        // Verifica se a matéria pertence a este utilizador antes de alterar
+        if (usuario != null && materiaAntiga != null && materiaAntiga.getUsuario().getId().equals(usuario.getId())) {
+            materiaAntiga.setNome(materiaAtualizada.getNome());
+            materiaAntiga.setCorHex(materiaAtualizada.getCorHex()); // Também podes mudar a cor da aura!
+            
+            materiaRepo.save(materiaAntiga);
+        }
+        
+        return "redirect:/materias";
+    }
     private void atualizarRankGlobal(Usuario usuario) {
         List<Materia> todasMaterias = materiaRepo.findByUsuarioId(usuario.getId());
         double somaAproveitamentos = 0;

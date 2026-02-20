@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>EduGame - Renomear Disciplina</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e2e; color: #cdd6f4; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: #313244; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-top: 5px solid #a6e3a1; margin-top: 50px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-size: 0.85em; margin-bottom: 8px; color: #bac2de; font-weight: bold; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #45475a; background: #181825; color: white; box-sizing: border-box; }
+        input:focus { outline: none; border-color: #a6e3a1; }
+        input[type="color"] { padding: 5px; height: 50px; cursor: pointer; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: #a6e3a1; color: #11111b; font-size: 1rem; margin-top: 10px; transition: 0.3s;}
+        .btn:hover { background: #89dceb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🏷️ Renomear Disciplina</h2>
+        <p style="color: #a6adc8; font-size: 0.9em; margin-bottom: 25px;">Corrige o nome ou a cor do teu grimório de estudos. (O teu Histórico de Batalhas continuará intacto).</p>
+
+        <form th:action="@{/materias/editar}" th:object="${materia}" method="post">
+            <input type="hidden" th:field="*{id}">
+
+            <div class="form-group">
+                <label>Nome da Disciplina</label>
+                <input type="text" th:field="*{nome}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Cor da Aura (Manto)</label>
+                <input type="color" th:field="*{corHex}" required>
+            </div>
+
+            <button type="submit" class="btn">Salvar Alterações</button>
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="/materias" style="color: #f38ba8; text-decoration: none; font-weight: bold; font-size: 0.9em;">Cancelar Edição</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
