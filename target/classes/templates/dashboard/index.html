@@ -37,12 +37,9 @@
 </head>
 <body>
 
-    <div class="header">
-        <h1>Painel do Caçador: <span th:text="${usuario.nome}" style="color: #f9e2af;">Nome</span></h1>
-        <form th:action="@{/logout}" method="post">
-            <button type="submit" class="btn-sair">Sair do Jogo</button>
-        </form>
-    </div>
+   <div th:replace="~{fragmentos/navbar :: navbar}"></div>
+
+    <h1 style="margin-bottom: 20px;">Painel do Caçador: <span th:text="${usuario.nome}" style="color: #f9e2af;">Nome</span></h1>
 
     <div class="stats-grid">
         <div class="card" style="border-color: #f9e2af;"><h3>Nível Atual</h3><div class="value" th:text="${usuario.nivel}">1</div></div>

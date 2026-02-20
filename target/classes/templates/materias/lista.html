@@ -28,10 +28,8 @@
 </head>
 <body>
     <div class="container">
-        <div class="header-area">
-            <a href="/dashboard" class="back-link">← Voltar para Dashboard</a>
-            <h1>Laboratório de Estudos</h1>
-        </div>
+        <div th:replace="~{fragmentos/navbar :: navbar}"></div>
+        <h1 style="margin-bottom: 30px; border-bottom: 1px solid #45475a; padding-bottom: 10px;">Laboratório de Estudos</h1>
 
         <div class="grid-forms">
             <div class="card">
