@@ -20,3 +20,6 @@
 # Ficheiros de sistema
 .DS_Store
 Thumbs.db
+
+# Ocultar o cofre de segredos locais
+segredos.properties

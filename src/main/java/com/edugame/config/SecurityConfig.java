@@ -16,8 +16,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                // Libera o acesso à tela de login, cadastro e arquivos visuais (CSS, imagens)
-                .requestMatchers("/login", "/cadastro", "/css/**", "/js/**", "/img/**").permitAll()
+                // Adicionámos o "/verificar" aqui para permitir a ativação da conta!
+                .requestMatchers("/login", "/cadastro", "/verificar", "/css/**", "/js/**", "/img/**").permitAll()
                 // Libera o painel do banco de dados temporário (H2)
                 .requestMatchers("/h2-console/**").permitAll()
                 // Tranca TODO o resto do jogo. Só entra se tiver logado!

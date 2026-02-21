@@ -42,50 +42,52 @@ public class Usuario {
     private LocalDate dataCadastro;
 
     // ==========================================
+    // 🛡️ SISTEMA DE VERIFICAÇÃO DE E-MAIL
+    // ==========================================
+    @Column(name = "conta_ativa", nullable = false)
+    private boolean contaAtiva = false; 
+
+    @Column(name = "codigo_verificacao", length = 64)
+    private String codigoVerificacao; 
+
+    // ==========================================
     // ⚔️ SISTEMA DE RPG (GAMIFICAÇÃO)
     // ==========================================
 
     @Column(nullable = false)
-    private Integer nivel = 1; // Todo caçador começa no nível 1
+    private Integer nivel = 1; 
 
     @Column(name = "exp_atual", nullable = false)
-    private Integer expAtual = 0; // Experiência atual na barra
+    private Integer expAtual = 0; 
 
     @Column(name = "exp_prox_nivel", nullable = false)
-    private Integer expParaProximoNivel = 1000; // Quanto precisa para upar
+    private Integer expParaProximoNivel = 1000; 
 
     @Column(name = "rank_geral", length = 2)
-    private String rankGeral = "F"; // Rank inicial de novato (F, E, D, C, B, A, S, SS)
+    private String rankGeral = "F"; 
 
-    // Método que será chamado para adicionar EXP quando você estudar
     public void ganharExp(int expGanha) {
         this.expAtual += expGanha;
         verificarLevelUp();
     }
 
-    // Lógica automática de subir de nível
     private void verificarLevelUp() {
         while (this.expAtual >= this.expParaProximoNivel) {
-            this.expAtual -= this.expParaProximoNivel; // Sobra o resto de EXP
+            this.expAtual -= this.expParaProximoNivel; 
             this.nivel++;
-            // Cada nível fica 20% mais difícil que o anterior (progressão de RPG)
             this.expParaProximoNivel = (int) (this.expParaProximoNivel * 1.2); 
         }
     }
 
-    // NOVO: Método para reverter a EXP e o Nível caso um registo seja apagado
     public void removerExp(int expPerdida) {
         this.expAtual -= expPerdida;
         
-        // Se a EXP ficar negativa e não estiver no nível 1, desce de nível (Level Down)!
         while (this.expAtual < 0 && this.nivel > 1) {
             this.nivel--;
-            // Faz o cálculo inverso (divide por 1.2) para saber a EXP do nível anterior
             this.expParaProximoNivel = (int) (this.expParaProximoNivel / 1.2); 
             this.expAtual += this.expParaProximoNivel;
         }
         
-        // Trava de segurança para não ficar com EXP negativa no Nível 1
         if (this.nivel == 1 && this.expAtual < 0) {
             this.expAtual = 0;
         }

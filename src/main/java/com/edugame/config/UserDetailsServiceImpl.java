@@ -19,14 +19,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // Busca o usuário pelo e-mail
         Usuario usuario = usuarioRepo.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Caçador não encontrado com o e-mail: " + email));
 
         // Transforma o nosso Usuario no formato que o Spring Security entende
+        // Adicionámos o ".disabled(!usuario.isContaAtiva())" para impedir a entrada de contas não verificadas
         return User.builder()
                 .username(usuario.getEmail())
                 .password(usuario.getSenha())
+                .disabled(!usuario.isContaAtiva()) 
                 .roles("JOGADOR")
                 .build();
     }
